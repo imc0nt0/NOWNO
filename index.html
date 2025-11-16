@@ -705,15 +705,17 @@ document.getElementById('redirectBtn').addEventListener('click', async () => {
     cardModal.style.display = 'flex';
     showWithdrawStatus('카드를 센서에 대세요');
     try {
-        const ok = await startCardDetection(2);
+        // 2ms 대신 기본값 (5000ms)을 사용하거나, 적절한 값 (예: 5000)을 사용
+        const ok = await startCardDetection(5000); // 👈 5000ms (5초)로 수정
+        // 또는: const ok = await startCardDetection(); // 기본값 사용
+        
         if (!ok) {
             cardModal.style.display = 'none';
+            // ...
             return;
         }
     } catch (e) {
-        console.error(e);
-        showWithdrawStatus('카드 감지 실패', true);
-        cardModal.style.display = 'none';
+        // ...
     }
 });
 
