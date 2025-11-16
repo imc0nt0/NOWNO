@@ -590,6 +590,9 @@ function clearPendingResolversWithFalse() {
    반환값: true (감지), false (타임아웃) */
 function readOnce(timeoutMs = 5000) {
   return new Promise(resolve => {
+    // 버퍼 초기화 제거!
+    // notificationBuffer = '';  ← 제거
+
     // 이미 버퍼에 CARD_DETECTED가 있으면 바로 성공
     if (notificationBuffer.includes('CARD_DETECTED')) {
       notificationBuffer = notificationBuffer.replace(/CARD_DETECTED/g, '');
