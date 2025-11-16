@@ -530,38 +530,45 @@ async function writeToDevice(str) {
 
 /* ===== 안정형 notification handler & readOnce / startCardDetection ===== */
 
+/* ===== 안정화된 notification handler & readOnce / startCardDetection ===== */
+
 /* 디버그 유틸 */
 window.debugShowBuffer = function(){
   console.log('notificationBuffer:', JSON.stringify(notificationBuffer));
-  console.log('pendingResolvers:', pendingResolvers.length);
+  console.log('pendingResolvers count:', pendingResolvers.length);
 };
 
-/* 안전한 notify 처리: chunk를 받고 newline 기준으로 메시지 분해 */
+/* 안전한 notify 처리: chunk를 받고 newline 기준으로 메시지 분해.
+   각 part마다 pendingResolvers를 호출하되, 처리되지 않은 resolver만 보존 */
 function handleNotifications(event) {
   try {
     const value = event.target.value;
     const decoder = new TextDecoder();
     const txt = decoder.decode(value);
     console.log('[BLE] notify chunk:', JSON.stringify(txt));
-    // 누적
     notificationBuffer += txt;
 
-    // 메시지를 줄 단위로 분리 (\r\n 또는 \n)
+    // 줄 단위로 분리 (마지막 조각은 미완성일 수 있어 버퍼에 남김)
     const parts = notificationBuffer.split(/\r?\n/);
-    // 마지막 조각은 완전하지 않을 수 있으므로 버퍼에 보관
     notificationBuffer = parts.pop() || '';
 
     parts.forEach(part => {
       if (!part) return;
       console.log('[BLE] notify msg:', part);
-      // 모든 대기자에게 전달(일회성)
-      while (pendingResolvers.length > 0) {
-        const resolver = pendingResolvers.shift();
-        try { resolver(part); } catch(e) { console.error(e); }
+
+      const remain = [];
+      for (const resolver of pendingResolvers) {
+        try {
+          const handled = resolver(part);
+          if (!handled) remain.push(resolver);
+        } catch (err) {
+          console.error('resolver error', err);
+        }
       }
+      pendingResolvers = remain;
     });
 
-    // 버퍼가 지나치게 커지면 자르기 (메모리 방지)
+    // 안전: 버퍼가 너무 커지면 잘라서 메모리 보호
     if (notificationBuffer.length > 4096) {
       notificationBuffer = notificationBuffer.slice(-1024);
     }
@@ -570,7 +577,7 @@ function handleNotifications(event) {
   }
 }
 
-/* 연결 끊김 처리를 안전하게: 남아있는 pending 리졸버들 정리 */
+/* 연결 끊김 시 pending 리졸버 전부 실패 처리 */
 function clearPendingResolversWithFalse() {
   while (pendingResolvers.length > 0) {
     const r = pendingResolvers.shift();
@@ -579,62 +586,85 @@ function clearPendingResolversWithFalse() {
   notificationBuffer = '';
 }
 
+/* readOnce: timeout 내에 CARD_DETECTED를 기다림
+   반환값: true (감지), false (타임아웃) */
 function readOnce(timeoutMs = 5000) {
-    return new Promise(resolve => {
-        // 호출 시점 이전 buffer는 무시
-        notificationBuffer = '';
-
-        let resolved = false;
-        const resolver = (msg) => {
-            if (resolved) return;
-            if (msg.includes('CARD_DETECTED')) {
-                resolved = true;
-                pendingResolvers = pendingResolvers.filter(r => r !== resolver);
-                resolve(true);
-            }
-        };
-        const timer = setTimeout(() => {
-            if (resolved) return;
-            resolved = true;
-            pendingResolvers = pendingResolvers.filter(r => r !== resolver);
-            resolve(false);
-        }, timeoutMs);
-
-        pendingResolvers.push(resolver);
-    });
-}
-
-async function startCardDetection(timeoutPerAttempt = 5000, retryDelay = 500) {
-    try { if (!bleDevice || !bleDevice.gatt.connected) await connectBLE(); } 
-    catch (e) { console.error('BLE 연결 실패', e); showWithdrawStatus('BLE 연결 실패', true, 2000); return false; }
-
-    let attempt = 0;
-    while (true) {
-        attempt++;
-        showWithdrawStatus(`카드 감지 시도 ${attempt}회차`, false);
-        console.log(`카드 감지 시도 ${attempt}회차`);
-
-        const detected = await readOnce(timeoutPerAttempt);
-        if (detected) {
-            console.log(`카드 감지 성공`);
-            showWithdrawStatus(`카드 인식 완료`, false);
-            if (cardModal) cardModal.style.display = 'none';
-            if (pinModal) pinModal.style.display = 'flex';
-            return true;
-        } else {
-            console.warn(`카드 감지 실패, ${retryDelay}ms 후 재시도`);
-            showWithdrawStatus(`카드 인식 실패, 재시도중...`, true, retryDelay);
-            await new Promise(r => setTimeout(r, retryDelay));
-        }
+  return new Promise(resolve => {
+    // 이미 버퍼에 CARD_DETECTED가 있으면 바로 성공
+    if (notificationBuffer.includes('CARD_DETECTED')) {
+      notificationBuffer = notificationBuffer.replace(/CARD_DETECTED/g, '');
+      resolve(true);
+      return;
     }
+
+    let finished = false;
+
+    const resolver = (msg) => {
+      if (finished) return false;
+      if (typeof msg !== 'string') return false;
+      if (msg.includes('CARD_DETECTED')) {
+        finished = true;
+        pendingResolvers = pendingResolvers.filter(r => r !== resolver);
+        resolve(true);
+        return true;
+      }
+      return false;
+    };
+
+    const timer = setTimeout(() => {
+      if (finished) return;
+      finished = true;
+      pendingResolvers = pendingResolvers.filter(r => r !== resolver);
+      resolve(false);
+    }, timeoutMs);
+
+    pendingResolvers.push(resolver);
+  });
 }
 
-/* BLE disconnect callback 내부에서 호출해서 pending 리졸버들 정리 */
+/* startCardDetection: CARD_DETECTED가 나올 때까지 재시도 */
+async function startCardDetection(timeoutPerAttempt = 5000, retryDelay = 500) {
+  try {
+    if (!bleDevice || !bleDevice.gatt || !bleDevice.gatt.connected) {
+      await connectBLE();
+    }
+  } catch (e) {
+    console.error('BLE 열기 실패', e);
+    showWithdrawStatus('BLE 연결 실패', true, 2000);
+    return false;
+  }
+
+  let attempt = 0;
+  while (true) {
+    attempt++;
+    showWithdrawStatus(`카드 감지 시도 ${attempt}회차`, false);
+    console.log(`카드 감지 시도 ${attempt}회차`);
+
+    const detected = await readOnce(timeoutPerAttempt);
+    if (detected) {
+      console.log('카드 감지 성공');
+      notificationBuffer = notificationBuffer.replace(/CARD_DETECTED/g, '');
+      pendingResolvers = [];
+      showWithdrawStatus('카드 인식 완료', false);
+      if (cardModal) cardModal.style.display = 'none';
+      if (pinModal) pinModal.style.display = 'flex';
+      return true;
+    } else {
+      console.warn(`카드 감지 실패 (${attempt}), ${retryDelay}ms 후 재시도`);
+      showWithdrawStatus('카드 인식 실패, 재시도중...', true, retryDelay);
+      await new Promise(r => setTimeout(r, retryDelay));
+    }
+  }
+}
+
+/* BLE disconnect callback */
 function onDisconnected() {
   console.warn('BLE 장치 연결 끊김');
   showWithdrawStatus('BLE 연결이 끊어졌습니다', true);
+  txChar = null;
+  rxChar = null;
   clearPendingResolversWithFalse();
-  // 자동 재광고/재연결 로직은 필요하면 구현
+  // 필요하면 자동 재연결 정책 추가 가능
 }
 
 
