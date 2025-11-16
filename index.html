@@ -575,13 +575,10 @@ async function startCardDetection(timeoutPerAttempt = 5000, retryDelay = 500) {
     while (true) {
         attempt++;
 
-        // 시도 전에 버퍼와 pendingResolvers 초기화
-        notificationBuffer = '';
-        pendingResolvers = [];
-
         showWithdrawStatus(`카드 감지 시도 ${attempt}회차`, false);
         console.log(`카드 감지 시도 ${attempt}회차`);
-        const detected = await readOnce(timeoutPerAttempt);
+
+        const detected = await readOnce(timeoutPerAttempt); // buffer 초기화 X
         if (detected) {
             console.log(`카드 감지 성공`);
             showWithdrawStatus(`카드 인식 완료`, false);
