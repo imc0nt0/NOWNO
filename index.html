@@ -522,8 +522,8 @@ function readOnce(timeoutMs = 5000) {
     });
 }
 
-/* startCardDetection: repeatCount 회 연속 성공 필요 */
-async function startCardDetection(repeatCount = 2, timeoutPerAttempt = 5000) {
+/* startCardDetection: 카드 감지 성공할 때까지 반복 */
+async function startCardDetection(timeoutPerAttempt = 5000, retryDelay = 500) {
     try {
         if (!bleDevice || !bleDevice.gatt || !bleDevice.gatt.connected) {
             await connectBLE();
@@ -534,28 +534,24 @@ async function startCardDetection(repeatCount = 2, timeoutPerAttempt = 5000) {
         return false;
     }
 
-    for (let i = 1; i <= repeatCount; i++) {
-        showWithdrawStatus(`카드 감지 시작 ${i}회차`, false);
-        console.log(`카드 감지 시작 ${i}회차`);
+    let attempt = 0;
+    while (true) {
+        attempt++;
+        showWithdrawStatus(`카드 감지 시도 ${attempt}회차`, false);
+        console.log(`카드 감지 시도 ${attempt}회차`);
         const detected = await readOnce(timeoutPerAttempt);
         if (detected) {
-            console.log(`카드 감지 ${i}회차 성공`);
-            showWithdrawStatus(`카드 인식 ${i}회차 완료`, false);
-            if (i < repeatCount) {
-                await new Promise(r => setTimeout(r, 200));
-                continue;
-            }
-            // 모든 회차 성공 -> PIN 모달로 이동
+            console.log(`카드 감지 성공`);
+            showWithdrawStatus(`카드 인식 완료`, false);
             if (cardModal) cardModal.style.display = 'none';
             if (pinModal) pinModal.style.display = 'flex';
             return true;
         } else {
-            console.warn(`카드 감지 ${i}회차 실패`);
-            showWithdrawStatus(`카드 인식 ${i}회차 실패`, true, 2000);
-            return false;
+            console.warn(`카드 감지 실패, ${retryDelay}ms 후 재시도`);
+            showWithdrawStatus(`카드 인식 실패, 재시도중...`, true, retryDelay);
+            await new Promise(r => setTimeout(r, retryDelay));
         }
     }
-    return false;
 }
 
 /* imageModal 확인 -> 조회 흐름 */
