@@ -235,7 +235,7 @@ tbody tr:hover{background:#ffe0f5;}
 
 <script>
 /* =========================
-   Web Bluetooth + UI 통합 전체 스크립트
+   Web Bluetooth + UI 통합 (개선판)
    NUS UUIDs (ESP32 쪽과 일치해야 함)
    ========================= */
 const NUS_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
@@ -254,11 +254,6 @@ const fullscreenBtn = document.getElementById('fullscreenBtn');
 const startBtn = document.getElementById('startBtn');
 const ad1 = document.getElementById('ad1');
 const ad2 = document.getElementById('ad2');
-const ads = [
-    "https://cdn.apnews.kr/news/photo/202405/3019634_42922_92.png",
-    "https://thumbnews.nateimg.co.kr/view610///news.nateimg.co.kr/orgImg/wh/2025/11/14/1296320_1488750_4248.jpg",
-    "https://img.tf.co.kr/article/home/2023/11/14/20235860169994256200.jpg"
-];
 const cardModal = document.getElementById('cardModal');
 const pinModal = document.getElementById('pinModal');
 const pinInput = document.getElementById('pinInput');
@@ -268,6 +263,14 @@ const atmUI = document.getElementById('atmUI');
 const selectSound = document.getElementById('SELECTSOUND');
 const mainAudio = document.getElementById('MainSound');
 const withdrawStatusDiv = document.getElementById('withdrawStatus');
+
+/* 광고 데이터 */
+const ads = [
+    "https://cdn.apnews.kr/news/photo/202405/3019634_42922_92.png",
+    "https://thumbnews.nateimg.co.kr/view610///news.nateimg.co.kr/orgImg/wh/2025/11/14/1296320_1488750_4248.jpg",
+    "https://img.tf.co.kr/article/home/2023/11/14/20235860169994256200.jpg"
+];
+
 let current = 0, next = 1;
 let isWithdrawFlow = false; // 출금 흐름인지 플래그
 
@@ -286,13 +289,10 @@ function nextSlide(){
 }
 setInterval(nextSlide, 4000);
 
-/* ---------------------------
-   Tile 클릭 동작: t4(조회)만 imageModal. 나머지는 제한 모달
-   --------------------------- */
+/* UI 타일 클릭 */
 document.querySelectorAll('.tile').forEach(tile => {
   tile.addEventListener('click', () => {
     try { selectSound.volume = 1.0; selectSound.play().catch(()=>{}); mainAudio.volume = 0; } catch(e){}
-    // 조회업무 (t4) 체크
     if (tile.classList.contains('t4')) {
       document.getElementById('imageModal').style.display = 'block';
     } else {
@@ -302,13 +302,13 @@ document.querySelectorAll('.tile').forEach(tile => {
   });
 });
 
-/* close modal */
+/* 모달 닫기 */
 document.getElementById('closeModal').addEventListener('click', ()=> {
     document.getElementById('modal').style.display='none';
     try{ selectSound.play().catch(()=>{}); }catch(e){}
 });
 
-/* start 버튼 */
+/* 시작 버튼 */
 startBtn.addEventListener('click', ()=>{
     mainAudio.volume = 1.0;
     mainAudio.play().catch(()=>{});
@@ -317,23 +317,24 @@ startBtn.addEventListener('click', ()=>{
 });
 
 /* ---------------------------
-   Web Bluetooth 연결 함수: 서비스 필터 → acceptAllDevices 폴백
+   connectBLE: 서비스 필터 실패 시 acceptAllDevices 폴백,
+   특성 가져온 뒤 상세 로그와 notify 시작 처리
    --------------------------- */
 async function connectBLE() {
     if (!('bluetooth' in navigator)) throw new Error('Web Bluetooth 지원 안됨');
-    if (bleDevice && bleDevice.gatt && bleDevice.gatt.connected) return;
+    if (bleDevice && bleDevice.gatt && bleDevice.gatt.connected) {
+        console.log('이미 연결된 BLE 장치가 있습니다:', bleDevice.name || bleDevice.id);
+        return;
+    }
 
-    // 우선 서비스 필터로 시도
+    // 선택 창 띄우기 (서비스 필터 우선)
     try {
         console.log('requestDevice: service filter', NUS_SERVICE_UUID);
-        const options = {
-            filters: [{ services: [NUS_SERVICE_UUID] }],
-            optionalServices: [NUS_SERVICE_UUID]
-        };
+        const options = { filters: [{ services: [NUS_SERVICE_UUID] }], optionalServices: [NUS_SERVICE_UUID] };
         bleDevice = await navigator.bluetooth.requestDevice(options);
     } catch (errFilter) {
         console.warn('service filter 실패:', errFilter);
-        // 폴백: acceptAllDevices로 열기(사용자가 직접 디바이스 선택)
+        // 폴백
         try {
             console.log('requestDevice: acceptAllDevices 폴백');
             const options2 = { acceptAllDevices: true, optionalServices: [NUS_SERVICE_UUID] };
@@ -345,26 +346,66 @@ async function connectBLE() {
     }
 
     bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
-    gattServer = await bleDevice.gatt.connect();
-    nusService = await gattServer.getPrimaryService(NUS_SERVICE_UUID);
-    txChar = await nusService.getCharacteristic(NUS_CHAR_TX_UUID);
-    rxChar = await nusService.getCharacteristic(NUS_CHAR_RX_UUID);
 
-    // notify 시작
-    await txChar.startNotifications();
-    txChar.addEventListener('characteristicvaluechanged', handleNotifications);
+    try {
+        console.log('gatt 연결 시도...');
+        gattServer = await bleDevice.gatt.connect();
+        console.log('gatt 연결 성공:', bleDevice.name || bleDevice.id);
 
-    console.log('BLE 연결 완료:', bleDevice.name || bleDevice.id);
+        nusService = await gattServer.getPrimaryService(NUS_SERVICE_UUID);
+        console.log('NUS 서비스 획득');
+
+        // 특성 가져오기 — 안전히 try/catch
+        try {
+            txChar = await nusService.getCharacteristic(NUS_CHAR_TX_UUID);
+            console.log('TX characteristic 획득', txChar.uuid, txChar.properties);
+        } catch (e) {
+            console.error('TX characteristic 획득 실패', e);
+            txChar = null;
+        }
+        try {
+            rxChar = await nusService.getCharacteristic(NUS_CHAR_RX_UUID);
+            console.log('RX characteristic 획득', rxChar.uuid, rxChar.properties);
+        } catch (e) {
+            console.error('RX characteristic 획득 실패', e);
+            rxChar = null;
+        }
+
+        // notify 시작 (있으면)
+        if (txChar) {
+            try {
+                if (txChar.properties.notify || txChar.properties.indicate) {
+                    await txChar.startNotifications();
+                    txChar.addEventListener('characteristicvaluechanged', handleNotifications);
+                    console.log('TX notifications started');
+                } else {
+                    console.warn('TX characteristic에 notify/indicate 권한이 없음:', txChar.properties);
+                }
+            } catch (e) {
+                console.error('startNotifications 실패:', e);
+            }
+        }
+
+        console.log('BLE 연결 완료:', bleDevice.name || bleDevice.id);
+    } catch (e) {
+        console.error('BLE 초기화 실패:', e);
+        // 연결 실패 시 클린업
+        try { if (gattServer && gattServer.connected) gattServer.disconnect(); } catch{}
+        throw e;
+    }
 }
 
 /* disconnect handler */
 function onDisconnected() {
     console.warn('BLE 장치 연결 끊김');
     showWithdrawStatus('BLE 연결이 끊어졌습니다', true);
-    // 필요하면 자동 재연결 로직 추가 가능
+    // 상태 정리
+    txChar = null;
+    rxChar = null;
+    // 필요하면 자동 재연결 정책을 여기에 추가
 }
 
-/* handle notifications: 누적 + newline 기준 분리 + pending resolve */
+/* handle notifications: 누적 + newline 분할 */
 function handleNotifications(event) {
     const value = event.target.value;
     const decoder = new TextDecoder();
@@ -372,7 +413,6 @@ function handleNotifications(event) {
     console.log('notify chunk:', txt);
     notificationBuffer += txt;
 
-    // newline으로 메시지 분할
     const parts = notificationBuffer.split(/\r?\n/);
     notificationBuffer = parts.pop() || '';
 
@@ -384,43 +424,74 @@ function handleNotifications(event) {
             const resolver = pendingResolvers.shift();
             try { resolver(part); } catch(e){ console.error(e); }
         }
-        // 즉시 처리할 메시지 (옵션)
-        // if (part.includes('CARD_DETECTED')) { ... }
     });
 }
 
-/* write to device (browser -> device) */
+/* writeToDevice: 쓰기 권한 검사 및 예외 로깅 추가 */
 async function writeToDevice(str) {
-    if (!rxChar) throw new Error('RX characteristic 없음');
+    if (!rxChar) {
+        console.error('writeToDevice: rxChar is null');
+        throw new Error('RX characteristic 없음');
+    }
     const encoder = new TextEncoder();
-    await rxChar.writeValue(encoder.encode(str));
+    const data = encoder.encode(str);
+    console.log('writeToDevice: about to write ->', str, data);
+
+    try {
+        // 우선 write (with response) 시도
+        if (rxChar.properties && rxChar.properties.write) {
+            await rxChar.writeValue(data);
+            console.log('writeToDevice: writeValue (with response) 성공');
+            return;
+        }
+        // 무응답 쓰기 시도 가능한 경우
+        if (rxChar.properties && rxChar.properties.writeWithoutResponse) {
+            if (typeof rxChar.writeValueWithoutResponse === 'function') {
+                await rxChar.writeValueWithoutResponse(data);
+                console.log('writeToDevice: writeValueWithoutResponse 성공');
+                return;
+            } else {
+                // 일부 구현에서 writeValue가 무응답 쓰기로 동작하는 경우도 있으므로 시도
+                await rxChar.writeValue(data);
+                console.log('writeToDevice: writeValue (fallback for no-response) 성공');
+                return;
+            }
+        }
+        // 아무 권한도 없으면 에러
+        throw new Error('characteristic에 쓰기 권한이 없음: ' + JSON.stringify(rxChar.properties));
+    } catch (err) {
+        console.error('writeToDevice: 쓰기 실패', err);
+        throw err;
+    }
 }
 
 /* readOnce: timeout 내에 CARD_DETECTED를 기다림 */
 function readOnce(timeoutMs = 5000) {
     return new Promise((resolve) => {
-        // 먼저 버퍼에 이미 있는지 확인
+        // 버퍼에 이미 있는지 확인
         if (notificationBuffer.includes('CARD_DETECTED')) {
             notificationBuffer = notificationBuffer.replace('CARD_DETECTED','');
             resolve(true);
             return;
         }
+
         let timed = false;
-        const timer = setTimeout(() => {
-            timed = true;
-            pendingResolvers = pendingResolvers.filter(r => r !== resolver);
-            resolve(false);
-        }, timeoutMs);
+        let timer = null;
 
         const resolver = (msg) => {
             if (timed) return;
             clearTimeout(timer);
-            if (msg.includes('CARD_DETECTED')) {
-                resolve(true);
-            } else {
-                resolve(false);
-            }
+            if (msg.includes('CARD_DETECTED')) resolve(true);
+            else resolve(false);
         };
+
+        timer = setTimeout(() => {
+            timed = true;
+            // resolver 제거
+            pendingResolvers = pendingResolvers.filter(r => r !== resolver);
+            resolve(false);
+        }, timeoutMs);
+
         pendingResolvers.push(resolver);
     });
 }
@@ -461,10 +532,10 @@ async function startCardDetection(repeatCount = 2, timeoutPerAttempt = 5000) {
     return false;
 }
 
-/* imageModal 확인 -> 조회 흐름 (카드 감지 -> PIN -> 적금화면) */
+/* imageModal 확인 -> 조회 흐름 */
 document.getElementById('redirectBtn').addEventListener('click', async () => {
     document.getElementById('imageModal').style.display = 'none';
-    isWithdrawFlow = false; // 조회 흐름
+    isWithdrawFlow = false;
     cardModal.style.display = 'flex';
     showWithdrawStatus('카드를 센서에 대세요');
     try {
@@ -473,7 +544,6 @@ document.getElementById('redirectBtn').addEventListener('click', async () => {
             cardModal.style.display = 'none';
             return;
         }
-        // startCardDetection가 성공하면 PIN 모달는 startCardDetection에서 열림
     } catch (e) {
         console.error(e);
         showWithdrawStatus('카드 감지 실패', true);
@@ -495,21 +565,23 @@ document.getElementById('cancelCardBtn').addEventListener('click', () => {
 
 /* PIN 키패드 로직 */
 const keypad = document.getElementById('keypad');
-keypad.addEventListener('click', (e) => {
-  if (!e.target.classList.contains('key')) return;
-  const val = e.target.textContent.trim();
-  if (e.target.classList.contains('clear')) {
-    pinInput.value = pinInput.value.slice(0, -1);
-    return;
-  }
-  if (val === '확인') {
-    document.getElementById('pinSubmitBtn').click();
-    return;
-  }
-  if (pinInput.value.length < 4) {
-    pinInput.value += val;
-  }
-});
+if (keypad) {
+  keypad.addEventListener('click', (e) => {
+    if (!e.target.classList.contains('key')) return;
+    const val = e.target.textContent.trim();
+    if (e.target.classList.contains('clear')) {
+      pinInput.value = pinInput.value.slice(0, -1);
+      return;
+    }
+    if (val === '확인') {
+      document.getElementById('pinSubmitBtn').click();
+      return;
+    }
+    if (pinInput.value.length < 4) {
+      pinInput.value += val;
+    }
+  });
+}
 
 /* PIN 취소 */
 document.getElementById('pinCancelBtn').addEventListener('click', () => {
@@ -523,19 +595,16 @@ pinSubmitBtn.addEventListener('click', async () => {
     showWithdrawStatus('PIN 4자리 입력', true);
     return;
   }
-  // 테스트용 고정 PIN 체크 (실사용시 서버 검증 필요)
   if (pin !== '1234') {
     showWithdrawStatus('PIN 오류', true);
     pinInput.value = '';
     return;
   }
 
-  // 성공 처리
   pinInput.value = '';
   pinModal.style.display = 'none';
 
   if (!isWithdrawFlow) {
-    // 조회 흐름: 적금 만기 화면
     atmUI.style.display = 'none';
     document.getElementById('depositScreen').style.display = 'block';
     createFireworks();
@@ -544,16 +613,16 @@ pinSubmitBtn.addEventListener('click', async () => {
     return;
   }
 
-  // 인출 흐름: BLE로 '1' 전송
   if (isWithdrawFlow) {
     try {
       if (!rxChar) {
         showWithdrawStatus('BLE 연결 끊김', true);
         return;
       }
-      await writeToDevice('1'); // ESP32가 이를 받아 LED 등 동작
+      console.log('인출 신호 전송 시도');
+      await writeToDevice('1');
+      console.log('인출 신호 전송 완료');
       showWithdrawStatus('인출 완료');
-      // 인출 완료 화면
       atmUI.style.display = 'none';
       document.getElementById('depositScreen').style.display = 'block';
       createFireworks();
@@ -566,12 +635,11 @@ pinSubmitBtn.addEventListener('click', async () => {
   }
 });
 
-/* MutationObserver: cardModal이 열리면 카드 감지 시작 (보조) */
+/* MutationObserver (보조) */
 const observer = new MutationObserver(() => {
     const display = window.getComputedStyle(cardModal).display;
     if (display !== 'none') {
-        // cardModal이 보이면 감지 시작(이미 startCardDetection 호출한 경우 중복 실행 가능, 안전하게 처리)
-        // startCardDetection();
+        // 보조 역할 — 필요하면 startCardDetection 호출
     }
 });
 observer.observe(cardModal, { attributes: true });
@@ -580,11 +648,18 @@ observer.observe(cardModal, { attributes: true });
 function showWithdrawStatus(msg, isError=false, duration=2000){
     withdrawStatusDiv.textContent = msg;
     withdrawStatusDiv.style.background = isError ? "rgba(255,64,129,0.95)" : "rgba(0,120,255,0.95)";
+    withdrawStatusDiv.style.color = "#fff";
+    withdrawStatusDiv.style.padding = "10px 16px";
+    withdrawStatusDiv.style.borderRadius = "8px";
+    withdrawStatusDiv.style.position = "fixed";
+    withdrawStatusDiv.style.left = "50%";
+    withdrawStatusDiv.style.transform = "translateX(-50%)";
+    withdrawStatusDiv.style.bottom = "90px";
     withdrawStatusDiv.style.display = "block";
     setTimeout(()=>{ withdrawStatusDiv.style.display = "none"; }, duration);
 }
 
-/* 폭죽/콘페티 */
+/* 폭죽/콘페티 (생략된 내부 함수는 원본과 동일) */
 function createFireworks(){
     for(let i=0;i<200;i++){
         const dot=document.createElement('div');
@@ -614,14 +689,14 @@ function createConfetti(){
     }
 }
 
-/* withdraw button scroll behavior */
+/* withdraw 버튼 위치 보정 */
 window.addEventListener('scroll', ()=>{
     const scrollTop = window.scrollY,
           scrollHeight = document.body.scrollHeight - window.innerHeight;
     withdrawBtn.style.bottom = (scrollTop >= scrollHeight - 50) ? '20px' : '-80px';
 });
 
-/* 전체화면 버튼: BLE 연결 시도 + 전체화면 */
+/* 전체화면 + BLE 연결 */
 fullscreenBtn.addEventListener('click', async () => {
     fullscreenBtn.style.display = 'none';
     try {
@@ -641,8 +716,9 @@ fullscreenBtn.addEventListener('click', async () => {
     } catch(e){}
 });
 
-/* 디버그 유틸: 콘솔에 버퍼 상태 보기 가능 */
-window.debugShowBuffer = function(){ console.log('notificationBuffer:', JSON.stringify(notificationBuffer), 'pendingResolvers:', pendingResolvers.length); };
+/* 디버그 유틸 */
+window.debugShowBuffer = function(){ console.log('notificationBuffer:', JSON.stringify(notificationBuffer), 'pendingResolvers:', pendingResolvers.length, 'rxChar props:', rxChar ? rxChar.properties : null); };
 </script>
+
 </body>
 </html>
