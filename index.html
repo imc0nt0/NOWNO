@@ -482,13 +482,12 @@ function handleNotifications(event) {
 
     parts.forEach(part => {
         if (!part) return;
-        console.log('notify message part:', part);
-        // 모든 pending resolver에게 전달
-        while (pendingResolvers.length > 0) {
-            const resolver = pendingResolvers.shift();
+        pendingResolvers.forEach(resolver => {
             try { resolver(part); } catch(e){ console.error(e); }
-        }
+        });
+        pendingResolvers = []; // 한번 전달 후 초기화
     });
+
 }
 
 /* writeToDevice: 쓰기 권한 검사 및 예외 로깅 추가 */
@@ -581,13 +580,9 @@ function clearPendingResolversWithFalse() {
 }
 
 function readOnce(timeoutMs = 5000) {
-    return new Promise((resolve) => {
-        // 이미 버퍼에 있는지 확인
-        if (notificationBuffer.includes('CARD_DETECTED')) {
-            notificationBuffer = notificationBuffer.replace('CARD_DETECTED', '');
-            resolve(true);
-            return;
-        }
+    return new Promise(resolve => {
+        // 호출 시점 이전 buffer는 무시
+        notificationBuffer = '';
 
         let resolved = false;
         const resolver = (msg) => {
@@ -598,7 +593,6 @@ function readOnce(timeoutMs = 5000) {
                 resolve(true);
             }
         };
-
         const timer = setTimeout(() => {
             if (resolved) return;
             resolved = true;
