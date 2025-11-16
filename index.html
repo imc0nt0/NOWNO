@@ -95,11 +95,62 @@ tbody tr:hover{background:#ffe0f5;}
 /* 상태 텍스트 */
 #withdrawStatus{ display:none; position:fixed; left:50%; transform:translateX(-50%); bottom:90px; padding:10px 16px; border-radius:8px; color:#fff; z-index:10001; }
 
-/* 폭죽/콘페티 */
-.firework{width:12px;height:12px;border-radius:50%;pointer-events:none;animation:explode 1s ease-out forwards;position:fixed;}
-@keyframes explode{0%{transform:scale(1) translate(0,0);opacity:1;}100%{transform:scale(0.5) translate(var(--x),var(--y));opacity:0;}}
-.confetti{width:10px;height:10px;border-radius:50%;pointer-events:none;animation:fall 3s infinite linear;position:fixed;}
-@keyframes fall{0%{transform:translateY(-50px) rotate(0deg);}100%{transform:translateY(500px) rotate(360deg);}}
+/* ----------------- 폭죽 ----------------- */
+.firework {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    pointer-events: none;
+    transform: translate(0, 0);
+    animation: fireworkAnim 1s ease-out forwards;
+}
+
+@keyframes fireworkAnim {
+    0% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+    }
+    80% {
+        opacity: 1;
+        transform: translate(var(--x), var(--y)) scale(1.2);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(var(--x), var(--y)) scale(0);
+    }
+}
+
+/* ----------------- 콘페티 ----------------- */
+.confetti {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    pointer-events: none;
+    border-radius: 2px;
+    opacity: 0.9;
+    animation-name: confettiAnim, confettiRotate;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+}
+
+/* 아래 두 가지 애니메이션을 동시에 적용 */
+@keyframes confettiAnim {
+    0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+@keyframes confettiRotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(720deg); }
+}
+
 
 /* 모바일 대응 */
 @media (max-width: 768px) {
