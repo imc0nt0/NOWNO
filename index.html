@@ -196,6 +196,32 @@ tbody tr:hover{background:#ffe0f5;}
             <tr><td>2025-11-01</td><td>100,000원</td><td>첫 입금 🎉</td></tr>
             <tr><td>2025-11-08</td><td>50,000원</td><td>생일 선물 💝</td></tr>
             <tr><td>2025-11-15</td><td>50,000원</td><td>추가 입금 ✨</td></tr>
+
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>
+            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
+            <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>            
             <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>
         </tbody>
     </table>
@@ -608,7 +634,7 @@ pinSubmitBtn.addEventListener('click', async () => {
     atmUI.style.display = 'none';
     document.getElementById('depositScreen').style.display = 'block';
     createFireworks();
-    createConfetti();
+setInterval(createConfetti, 200);
     showWithdrawStatus('조회 완료');
     return;
   }
@@ -660,34 +686,44 @@ function showWithdrawStatus(msg, isError=false, duration=2000){
 }
 
 /* 폭죽/콘페티 (생략된 내부 함수는 원본과 동일) */
+// 폭죽은 한 번만 생성
 function createFireworks(){
     for(let i=0;i<200;i++){
-        const dot=document.createElement('div');
-        dot.className='firework';
-        dot.style.left=(window.innerWidth/2+(Math.random()-0.5)*200)+'px';
-        dot.style.top=(window.innerHeight/2+(Math.random()-0.5)*200)+'px';
-        const angle=Math.random()*2*Math.PI;
-        const dist=600+Math.random()*100;
-        dot.style.setProperty('--x',`${Math.cos(angle)*dist}px`);
-        dot.style.setProperty('--y',`${Math.sin(angle)*dist}px`);
-        dot.style.background=`hsl(${Math.random()*360},80%,60%)`;
+        const dot = document.createElement('div');
+        dot.className = 'firework';
+        dot.style.left = (window.innerWidth/2 + (Math.random()-0.5)*200) + 'px';
+        dot.style.top = (window.innerHeight/2 + (Math.random()-0.5)*200) + 'px';
+        const angle = Math.random()*2*Math.PI;
+        const dist = 600 + Math.random()*100;
+        dot.style.setProperty('--x', `${Math.cos(angle)*dist}px`);
+        dot.style.setProperty('--y', `${Math.sin(angle)*dist}px`);
+        dot.style.background = `hsl(${Math.random()*360},80%,60%)`;
         document.body.appendChild(dot);
-        setTimeout(()=>dot.remove(),1000);
+        setTimeout(()=>dot.remove(), 1000); // 1초 후 제거
     }
 }
+
+// 콘페티는 계속 반복
 function createConfetti(){
-    for(let i=0;i<400;i++){
-        const c=document.createElement('div');
-        c.className='confetti';
-        c.style.left=Math.random()*window.innerWidth+'px';
-        c.style.top=Math.random()*window.innerHeight+'px';
-        c.style.width=c.style.height=(5+Math.random()*10)+'px';
-        c.style.background=`hsl(${Math.random()*360},70%,60%)`;
-        c.style.animationDuration=(2+Math.random()*3)+'s';
+    for(let i=0;i<10;i++){ // 한 번에 10개씩 생성
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.style.left = Math.random()*window.innerWidth + 'px';
+        c.style.top = '0px'; // 화면 위에서 떨어지도록
+        const size = 5 + Math.random()*10;
+        c.style.width = c.style.height = size + 'px';
+        c.style.background = `hsl(${Math.random()*360},70%,60%)`;
+        c.style.position = 'fixed';
+        c.style.zIndex = 9999;
+        c.style.pointerEvents = 'none';
+        c.style.animation = `confettiFall ${2+Math.random()*3}s linear forwards`;
         document.body.appendChild(c);
-        setTimeout(()=>c.remove(), 7000);
+        setTimeout(()=>c.remove(), 5000); // 5초 후 제거
     }
 }
+
+
+
 
 /* withdraw 버튼 위치 보정 */
 window.addEventListener('scroll', ()=>{
