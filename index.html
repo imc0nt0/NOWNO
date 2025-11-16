@@ -529,7 +529,6 @@ async function writeToDevice(str) {
     }
 }
 
-/* readOnce: timeout 내에 CARD_DETECTED를 기다림 */
 function readOnce(timeoutMs = 5000) {
     return new Promise((resolve) => {
         // 버퍼에 이미 있는지 확인
@@ -539,19 +538,20 @@ function readOnce(timeoutMs = 5000) {
             return;
         }
 
-        let timed = false;
-        let timer = null;
-
+        let resolved = false; // 한 번만 resolve 체크
         const resolver = (msg) => {
-            if (timed) return;
-            clearTimeout(timer);
-            if (msg.includes('CARD_DETECTED')) resolve(true);
-            else resolve(false);
+            if (resolved) return;
+            if (msg.includes('CARD_DETECTED')) {
+                resolved = true;
+                pendingResolvers = pendingResolvers.filter(r => r !== resolver);
+                resolve(true);
+            }
         };
 
-        timer = setTimeout(() => {
-            timed = true;
-            // resolver 제거
+        // timeout 처리
+        const timer = setTimeout(() => {
+            if (resolved) return;
+            resolved = true;
             pendingResolvers = pendingResolvers.filter(r => r !== resolver);
             resolve(false);
         }, timeoutMs);
@@ -574,17 +574,16 @@ async function startCardDetection(timeoutPerAttempt = 5000, retryDelay = 500) {
     let attempt = 0;
     while (true) {
         attempt++;
-
         showWithdrawStatus(`카드 감지 시도 ${attempt}회차`, false);
         console.log(`카드 감지 시도 ${attempt}회차`);
 
-        const detected = await readOnce(timeoutPerAttempt); // buffer 초기화 X
+        const detected = await readOnce(timeoutPerAttempt);
         if (detected) {
             console.log(`카드 감지 성공`);
             showWithdrawStatus(`카드 인식 완료`, false);
             if (cardModal) cardModal.style.display = 'none';
             if (pinModal) pinModal.style.display = 'flex';
-            return true;
+            return true; // 성공하면 루프 종료
         } else {
             console.warn(`카드 감지 실패, ${retryDelay}ms 후 재시도`);
             showWithdrawStatus(`카드 인식 실패, 재시도중...`, true, retryDelay);
