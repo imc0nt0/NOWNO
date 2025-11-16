@@ -17,7 +17,6 @@
     font-weight: 900;
     font-display: swap;
 }
-
 body { margin:0; font-family:'Paperozi-B'; user-select:none; background:#f5f8fc; overflow-x:hidden; }
 button { cursor:pointer; }
 
@@ -42,12 +41,12 @@ button { cursor:pointer; }
 .tile img.icon{width:100%;height:100%;opacity:0.95;position:static;}
 .tile .label{font-size:30px;margin-top:auto;}
 .t1,.t2,.t3{background:#ccc;color:#333;}
-.t4{background:#0078ff;color:#fff;}
+.t4{background:#0078ff;color:#fff; cursor:pointer;}
 .dark-tile{background:#ccc;color:#333;grid-column:span 2;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;}
 .right-area{width:40%;display:grid;grid-template-columns:repeat(2,1fr);gap:20px;}
 .small-btn{background:#ccc;color:#333;border-radius:14px;padding:22px;font-size:18px;font-weight:600;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.08);position:relative;}
 
-/* 모달 */
+/* modal 기본 */
 .modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:rgba(0,0,0,0.5);backdrop-filter:blur(3px);}
 .modal-content{background:#fff;margin:10% auto;padding:30px 20px;border-radius:16px;width:450px;max-width:90%;box-shadow:0 8px 20px rgba(0,0,0,0.25);text-align:center;font-family:"Noto Sans KR",sans-serif;transform:translateY(-50px);opacity:0;animation:slideDown 0.4s ease forwards;}
 .modal-content h2{margin-top:0;color:#0078ff;font-size:32px;font-weight:800;}
@@ -69,8 +68,32 @@ tbody tr:nth-child(odd){background:#f8faff;}
 tbody tr:nth-child(even){background:#fff0f5;}
 tbody tr:hover{background:#ffe0f5;}
 
+/* 카드 모달 스타일 */
+.card-modal{ display:none; align-items:center; justify-content:center; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; }
+.card-box{ background:#fff; padding:32px; border-radius:18px; width:360px; text-align:center; box-shadow:0 12px 30px rgba(0,0,0,0.25); }
+.card-box h2{ color:#0078ff; margin:0 0 8px; font-size:26px; }
+.card-box p{ color:#666; margin:0 0 18px; }
+.card-scan-animation{ margin:0 auto 18px; width:260px; height:80px; border-radius:10px; background:linear-gradient(90deg,#e9f3ff,#fff); position:relative; overflow:hidden; }
+.card-scan-animation::before{ content:""; position:absolute; left:-60px; top:0; width:60px; height:100%; background:rgba(0,120,255,0.12); animation:scan 1s linear infinite; }
+@keyframes scan{ 0%{ left:-60px } 100%{ left:320px } }
+.small-action{ margin-top:8px; padding:10px 18px; border-radius:10px; border:none; background:#eee; cursor:pointer; }
+.small-action:hover{ transform:translateY(-2px); }
+
+/* PIN 모달 스타일 */
+.pin-modal{ display:none; align-items:center; justify-content:center; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; }
+.pin-box{ background:#fff; padding:24px; border-radius:18px; width:360px; text-align:center; box-shadow:0 12px 30px rgba(0,0,0,0.25); }
+.pin-display{ width:80%; font-size:28px; text-align:center; padding:10px; margin-bottom:16px; border-radius:10px; border:2px solid #eee; }
+.keypad{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.key{ padding:14px 0; font-size:20px; border-radius:10px; border:none; background:#f1f1f1; cursor:pointer; }
+.key.enter{ background:#0078ff; color:#fff; grid-column:span 1; }
+.key.clear{ background:#ff6b6b; color:#fff; }
+.key:active{ transform:scale(0.98); }
+
 /* 인출 버튼 */
 #withdrawBtn{position:fixed;bottom:-80px;left:50%;transform:translateX(-50%);padding:16px 40px;font-family:'Paperozi-B';font-size:22px;border:none;border-radius:12px;background:#ff4081;color:white;cursor:pointer;box-shadow:0 8px 20px rgba(0,0,0,0.3);transition:bottom 0.5s;z-index:999;}
+
+/* 상태 텍스트 */
+#withdrawStatus{ display:none; position:fixed; left:50%; transform:translateX(-50%); bottom:90px; padding:10px 16px; border-radius:8px; color:#fff; z-index:10001; }
 
 /* 폭죽/콘페티 */
 .firework{width:12px;height:12px;border-radius:50%;pointer-events:none;animation:explode 1s ease-out forwards;position:fixed;}
@@ -142,7 +165,7 @@ tbody tr:hover{background:#ffe0f5;}
     </div>
 </div>
 
-<!-- 모달 -->
+<!-- 모달 일반 -->
 <div id="modal" class="modal">
     <div class="modal-content">
         <h2>이용 제한 안내</h2>
@@ -174,7 +197,6 @@ tbody tr:hover{background:#ffe0f5;}
             <tr><td>2025-11-08</td><td>50,000원</td><td>생일 선물 💝</td></tr>
             <tr><td>2025-11-15</td><td>50,000원</td><td>추가 입금 ✨</td></tr>
             <tr><td>2025-11-22</td><td>1,000,000원</td><td>적금 완료 🏆</td></tr>
-            <!-- 반복 데이터는 예시입니다 -->
         </tbody>
     </table>
 </div>
@@ -185,59 +207,49 @@ tbody tr:hover{background:#ffe0f5;}
 <button id="withdrawBtn">인출하기</button>
 <div id="withdrawStatus"></div>
 
-<!-- 카드/비밀번호 입력 모달 -->
-<style>
-.modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:rgba(0,0,0,0.5);backdrop-filter:blur(3px);}
-.modal-content{background:#fff;margin:10% auto;padding:30px 20px;border-radius:16px;width:450px;max-width:90%;box-shadow:0 8px 20px rgba(0,0,0,0.25);text-align:center;font-family:"Noto Sans KR",sans-serif;transform:translateY(-50px);opacity:0;animation:slideDown 0.4s ease forwards;}
-.modal-content h2{margin-top:0;color:#0078ff;font-size:32px;font-weight:800;}
-.modal-content p{color:#333;font-size:22px;margin:20px 0;line-height:1.4;}
-.modal-content input{padding:12px 8px;font-size:22px;width:60%;margin:10px auto;display:block;text-align:center;}
-.modal-content button{padding:10px 28px;border:none;border-radius:12px;background:#0078ff;color:#fff;font-size:38px;font-weight:700;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;}
-.modal-content button:hover{transform:translateY(-2px);box-shadow:0 6px 15px rgba(0,0,0,0.2);}
-</style>
-
-<div id="cardModal" class="modal">
-  <div class="modal-content">
-    <h2>카드 인식</h2>
-    <p>카드를 삽입해주세요</p>
+<!-- 카드 모달 (교체된 UI) -->
+<div id="cardModal" class="card-modal">
+  <div class="card-box">
+    <h2>카드를 센서에 대세요</h2>
+    <p id="cardModalHint">카드를 센서에 가까이 대면 자동으로 인식됩니다.</p>
+    <div class="card-scan-animation" aria-hidden="true"></div>
+    <button id="cancelCardBtn" class="small-action">취소</button>
   </div>
 </div>
 
-<div id="pinModal" class="modal">
-  <div class="modal-content">
+<!-- PIN 모달 (숫자 키패드) -->
+<div id="pinModal" class="pin-modal">
+  <div class="pin-box">
     <h2>비밀번호 입력</h2>
-    <input type="password" id="pinInput" maxlength="4" placeholder="****">
-    <button id="pinSubmitBtn">확인</button>
+    <input id="pinInput" class="pin-display" type="password" maxlength="4" readonly placeholder="----" />
+    <div class="keypad" id="keypad">
+      <button class="key">1</button><button class="key">2</button><button class="key">3</button>
+      <button class="key">4</button><button class="key">5</button><button class="key">6</button>
+      <button class="key">7</button><button class="key">8</button><button class="key">9</button>
+      <button class="key clear">지움</button><button class="key">0</button>
+      <button id="pinSubmitBtn" class="key enter">확인</button>
+    </div>
+    <button id="pinCancelBtn" class="small-action" style="margin-top:12px;">취소</button>
   </div>
 </div>
 
 <script>
-/*
-  Web Bluetooth (BLE NUS) implementation
-  - ESP32 / BLE device should advertise NUS service:
-    SERVICE: 6e400001-b5a3-f393-e0a9-e50e24dcca9e
-    RX char (write): 6e400002-b5a3-f393-e0a9-e50e24dcca9e (browser -> device)
-    TX char (notify):6e400003-b5a3-f393-e0a9-e50e24dcca9e (device -> browser)
-  - 브라우저는 HTTPS 또는 localhost에서만 동작합니다.
-*/
-
-// NUS UUIDs
+/* =========================
+   Web Bluetooth + UI 통합 전체 스크립트
+   NUS UUIDs (ESP32 쪽과 일치해야 함)
+   ========================= */
 const NUS_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-const NUS_CHAR_RX_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // write (browser -> device)
-const NUS_CHAR_TX_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // notify (device -> browser)
+const NUS_CHAR_RX_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const NUS_CHAR_TX_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
 
-// BLE state
-let bleDevice = null;
-let gattServer = null;
-let nusService = null;
-let txChar = null; // notify
-let rxChar = null; // write
+/* BLE state */
+let bleDevice = null, gattServer = null, nusService = null, rxChar = null, txChar = null;
 
-// Notification buffering and one-shot readers
-let notificationBuffer = ''; // 누적 텍스트
-let pendingResolvers = [];    // readOnce에서 대기중인 리졸버들
+/* notification buffer & resolvers */
+let notificationBuffer = '';
+let pendingResolvers = [];
 
-// UI refs
+/* UI refs */
 const fullscreenBtn = document.getElementById('fullscreenBtn');
 const startBtn = document.getElementById('startBtn');
 const ad1 = document.getElementById('ad1');
@@ -255,68 +267,83 @@ const withdrawBtn = document.getElementById('withdrawBtn');
 const atmUI = document.getElementById('atmUI');
 const selectSound = document.getElementById('SELECTSOUND');
 const mainAudio = document.getElementById('MainSound');
+const withdrawStatusDiv = document.getElementById('withdrawStatus');
 let current = 0, next = 1;
-let isWithdrawFlow = false; // 인출 흐름인지 플래그
+let isWithdrawFlow = false; // 출금 흐름인지 플래그
 
-// 광고 슬라이드
+/* 광고 슬라이드 */
 function nextSlide(){
     ad2.src = ads[next];
-    ad1.style.opacity=0; 
-    ad2.style.opacity=1;
+    ad1.style.opacity = 0;
+    ad2.style.opacity = 1;
     setTimeout(()=>{
-        ad1.src=ads[next];
-        ad1.style.opacity=1;
-        ad2.style.opacity=0;
-        current=next;
-        next=(next+1)%ads.length;
+        ad1.src = ads[next];
+        ad1.style.opacity = 1;
+        ad2.style.opacity = 0;
+        current = next;
+        next = (next + 1) % ads.length;
     }, 1000);
 }
-setInterval(nextSlide,4000);
+setInterval(nextSlide, 4000);
 
-// 전체화면 + BLE 연결 버튼 (사용자가 누를 때 BLE 장치 선택 팝업이 뜸)
-fullscreenBtn.addEventListener('click', async () => {
-    fullscreenBtn.style.display = 'none';
-    try {
-        await connectBLE(); // 연결 시도
-        alert('BLE 연결 성공!');
-    } catch (e) {
-        console.error('BLE 연결 실패:', e);
-        alert('BLE 연결 실패: ' + (e && e.message ? e.message : e));
-        // 버튼 다시 보이게
-        fullscreenBtn.style.display = '';
+/* ---------------------------
+   Tile 클릭 동작: t4(조회)만 imageModal. 나머지는 제한 모달
+   --------------------------- */
+document.querySelectorAll('.tile').forEach(tile => {
+  tile.addEventListener('click', () => {
+    try { selectSound.volume = 1.0; selectSound.play().catch(()=>{}); mainAudio.volume = 0; } catch(e){}
+    // 조회업무 (t4) 체크
+    if (tile.classList.contains('t4')) {
+      document.getElementById('imageModal').style.display = 'block';
+    } else {
+      document.getElementById('modal').style.display = 'block';
     }
-
-    // 전체화면 진입 (가능하면)
-    const elem = document.documentElement;
-    if (elem.requestFullscreen) {
-        try { await elem.requestFullscreen(); } catch {}
-    } else if (elem.webkitRequestFullscreen) {
-        try { await elem.webkitRequestFullscreen(); } catch {}
-    } else if (elem.msRequestFullscreen) {
-        try { await elem.msRequestFullscreen(); } catch {}
-    }
+    isWithdrawFlow = false;
+  });
 });
 
-// start 버튼
+/* close modal */
+document.getElementById('closeModal').addEventListener('click', ()=> {
+    document.getElementById('modal').style.display='none';
+    try{ selectSound.play().catch(()=>{}); }catch(e){}
+});
+
+/* start 버튼 */
 startBtn.addEventListener('click', ()=>{
-    mainAudio.volume=1.0; 
+    mainAudio.volume = 1.0;
     mainAudio.play().catch(()=>{});
     document.getElementById("startScreen").style.display='none';
     document.getElementById("atmUI").style.display='block';
 });
 
-// BLE 연결 함수
+/* ---------------------------
+   Web Bluetooth 연결 함수: 서비스 필터 → acceptAllDevices 폴백
+   --------------------------- */
 async function connectBLE() {
     if (!('bluetooth' in navigator)) throw new Error('Web Bluetooth 지원 안됨');
     if (bleDevice && bleDevice.gatt && bleDevice.gatt.connected) return;
 
-    // 서비스 필터로 장치 선택창 표시
-    const options = {
-        filters: [{ services: [NUS_SERVICE_UUID] }],
-        optionalServices: [NUS_SERVICE_UUID]
-    };
+    // 우선 서비스 필터로 시도
+    try {
+        console.log('requestDevice: service filter', NUS_SERVICE_UUID);
+        const options = {
+            filters: [{ services: [NUS_SERVICE_UUID] }],
+            optionalServices: [NUS_SERVICE_UUID]
+        };
+        bleDevice = await navigator.bluetooth.requestDevice(options);
+    } catch (errFilter) {
+        console.warn('service filter 실패:', errFilter);
+        // 폴백: acceptAllDevices로 열기(사용자가 직접 디바이스 선택)
+        try {
+            console.log('requestDevice: acceptAllDevices 폴백');
+            const options2 = { acceptAllDevices: true, optionalServices: [NUS_SERVICE_UUID] };
+            bleDevice = await navigator.bluetooth.requestDevice(options2);
+        } catch (errAll) {
+            console.error('acceptAllDevices 실패:', errAll);
+            throw errAll;
+        }
+    }
 
-    bleDevice = await navigator.bluetooth.requestDevice(options);
     bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
     gattServer = await bleDevice.gatt.connect();
     nusService = await gattServer.getPrimaryService(NUS_SERVICE_UUID);
@@ -326,52 +353,54 @@ async function connectBLE() {
     // notify 시작
     await txChar.startNotifications();
     txChar.addEventListener('characteristicvaluechanged', handleNotifications);
+
+    console.log('BLE 연결 완료:', bleDevice.name || bleDevice.id);
 }
 
-// disconnect handler
+/* disconnect handler */
 function onDisconnected() {
     console.warn('BLE 장치 연결 끊김');
     showWithdrawStatus('BLE 연결이 끊어졌습니다', true);
-    // 자동 재연결 정책은 필요하면 추가
+    // 필요하면 자동 재연결 로직 추가 가능
 }
 
-// notification 처리: 텍스트 누적, 줄 단위로 분리하여 pending resolver로 전달
+/* handle notifications: 누적 + newline 기준 분리 + pending resolve */
 function handleNotifications(event) {
     const value = event.target.value;
     const decoder = new TextDecoder();
     const txt = decoder.decode(value);
+    console.log('notify chunk:', txt);
     notificationBuffer += txt;
 
-    // newline 기준으로 메시지 분리
+    // newline으로 메시지 분할
     const parts = notificationBuffer.split(/\r?\n/);
-    // 마지막은 불완전할 수 있어 버퍼로 남김
     notificationBuffer = parts.pop() || '';
 
     parts.forEach(part => {
         if (!part) return;
-        // 모든 pending resolver에게 전달 (readOnce 단일 대기자 설계)
+        console.log('notify message part:', part);
+        // 모든 pending resolver에게 전달
         while (pendingResolvers.length > 0) {
             const resolver = pendingResolvers.shift();
             try { resolver(part); } catch(e){ console.error(e); }
         }
-        // 추가로 즉시 처리할 특정 메시지는 여기서도 처리 가능
-        // ex) if (part.includes('CARD_DETECTED')) { ... }
+        // 즉시 처리할 메시지 (옵션)
+        // if (part.includes('CARD_DETECTED')) { ... }
     });
 }
 
-// write to device (browser -> device)
+/* write to device (browser -> device) */
 async function writeToDevice(str) {
     if (!rxChar) throw new Error('RX characteristic 없음');
     const encoder = new TextEncoder();
     await rxChar.writeValue(encoder.encode(str));
 }
 
-// readOnce: timeout 내에 특정 알림(CARD_DETECTED)을 기다림
+/* readOnce: timeout 내에 CARD_DETECTED를 기다림 */
 function readOnce(timeoutMs = 5000) {
     return new Promise((resolve) => {
-        // 먼저 버퍼에 이미 있는지 검사
+        // 먼저 버퍼에 이미 있는지 확인
         if (notificationBuffer.includes('CARD_DETECTED')) {
-            // consume
             notificationBuffer = notificationBuffer.replace('CARD_DETECTED','');
             resolve(true);
             return;
@@ -379,7 +408,6 @@ function readOnce(timeoutMs = 5000) {
         let timed = false;
         const timer = setTimeout(() => {
             timed = true;
-            // remove resolver if still present
             pendingResolvers = pendingResolvers.filter(r => r !== resolver);
             resolve(false);
         }, timeoutMs);
@@ -397,13 +425,10 @@ function readOnce(timeoutMs = 5000) {
     });
 }
 
-/*
- startCardDetection:
-  - repeatCount 회 연속(또는 순차)으로 readOnce를 실행해 모두 성공해야 다음 단계로 진행.
-*/
+/* startCardDetection: repeatCount 회 연속 성공 필요 */
 async function startCardDetection(repeatCount = 2, timeoutPerAttempt = 5000) {
     try {
-        if (!bleDevice || !bleDevice.gatt.connected) {
+        if (!bleDevice || !bleDevice.gatt || !bleDevice.gatt.connected) {
             await connectBLE();
         }
     } catch (e) {
@@ -425,7 +450,7 @@ async function startCardDetection(repeatCount = 2, timeoutPerAttempt = 5000) {
             }
             // 모든 회차 성공 -> PIN 모달로 이동
             if (cardModal) cardModal.style.display = 'none';
-            if (pinModal) pinModal.style.display = 'block';
+            if (pinModal) pinModal.style.display = 'flex';
             return true;
         } else {
             console.warn(`카드 감지 ${i}회차 실패`);
@@ -436,95 +461,130 @@ async function startCardDetection(repeatCount = 2, timeoutPerAttempt = 5000) {
     return false;
 }
 
-// imageModal의 확인 버튼: 조회 흐름에서 카드 감지 즉시 시작
+/* imageModal 확인 -> 조회 흐름 (카드 감지 -> PIN -> 적금화면) */
 document.getElementById('redirectBtn').addEventListener('click', async () => {
     document.getElementById('imageModal').style.display = 'none';
-    cardModal.style.display = 'block';
+    isWithdrawFlow = false; // 조회 흐름
+    cardModal.style.display = 'flex';
     showWithdrawStatus('카드를 센서에 대세요');
     try {
-        await startCardDetection(2);
+        const ok = await startCardDetection(2);
+        if (!ok) {
+            cardModal.style.display = 'none';
+            return;
+        }
+        // startCardDetection가 성공하면 PIN 모달는 startCardDetection에서 열림
     } catch (e) {
         console.error(e);
         showWithdrawStatus('카드 감지 실패', true);
+        cardModal.style.display = 'none';
     }
 });
 
-// 출금 버튼
+/* 출금 버튼: 인출 흐름 */
 withdrawBtn.addEventListener('click', () => {
     isWithdrawFlow = true;
-    cardModal.style.display = 'block';
-    // 자동으로 MutationObserver 또는 직접 호출로 감지 시작
+    cardModal.style.display = 'flex';
     startCardDetection();
 });
 
-// 모달 닫기
-document.getElementById('closeModal').addEventListener('click', ()=> {
-    document.getElementById('modal').style.display='none';
-    selectSound.play().catch(()=>{});
+/* 카드 모달 취소 */
+document.getElementById('cancelCardBtn').addEventListener('click', () => {
+    try { cardModal.style.display = 'none'; } catch(e){}
 });
 
-// PIN 제출 처리
-pinSubmitBtn.addEventListener('click', async () => {
-    const pin = (pinInput.value || '').trim();
-    if (pin !== '1234') {
-        showWithdrawStatus("PIN 오류", true);
-        pinInput.value = '';
-        return;
-    }
-    pinInput.value = '';
-    pinModal.style.display = 'none';
+/* PIN 키패드 로직 */
+const keypad = document.getElementById('keypad');
+keypad.addEventListener('click', (e) => {
+  if (!e.target.classList.contains('key')) return;
+  const val = e.target.textContent.trim();
+  if (e.target.classList.contains('clear')) {
+    pinInput.value = pinInput.value.slice(0, -1);
+    return;
+  }
+  if (val === '확인') {
+    document.getElementById('pinSubmitBtn').click();
+    return;
+  }
+  if (pinInput.value.length < 4) {
+    pinInput.value += val;
+  }
+});
 
-    // 인증 성공 → 화면 전환
+/* PIN 취소 */
+document.getElementById('pinCancelBtn').addEventListener('click', () => {
+  pinModal.style.display = 'none';
+});
+
+/* PIN 제출 처리 (디지털 키패드용) */
+pinSubmitBtn.addEventListener('click', async () => {
+  const pin = (pinInput.value || '').trim();
+  if (pin.length !== 4) {
+    showWithdrawStatus('PIN 4자리 입력', true);
+    return;
+  }
+  // 테스트용 고정 PIN 체크 (실사용시 서버 검증 필요)
+  if (pin !== '1234') {
+    showWithdrawStatus('PIN 오류', true);
+    pinInput.value = '';
+    return;
+  }
+
+  // 성공 처리
+  pinInput.value = '';
+  pinModal.style.display = 'none';
+
+  if (!isWithdrawFlow) {
+    // 조회 흐름: 적금 만기 화면
     atmUI.style.display = 'none';
     document.getElementById('depositScreen').style.display = 'block';
     createFireworks();
     createConfetti();
+    showWithdrawStatus('조회 완료');
+    return;
+  }
 
-    // 인출 흐름이면 BLE로 '1' 전송
-    if (isWithdrawFlow) {
-        try {
-            if (!rxChar) {
-                showWithdrawStatus("BLE 연결 끊김", true);
-                return;
-            }
-            await writeToDevice('1'); // ESP32가 이를 받아 LED 등 동작
-            showWithdrawStatus("인출 완료");
-        } catch (e) {
-            console.error("인출 신호 전송 실패:", e);
-            showWithdrawStatus("인출 신호 실패", true);
-        }
+  // 인출 흐름: BLE로 '1' 전송
+  if (isWithdrawFlow) {
+    try {
+      if (!rxChar) {
+        showWithdrawStatus('BLE 연결 끊김', true);
+        return;
+      }
+      await writeToDevice('1'); // ESP32가 이를 받아 LED 등 동작
+      showWithdrawStatus('인출 완료');
+      // 인출 완료 화면
+      atmUI.style.display = 'none';
+      document.getElementById('depositScreen').style.display = 'block';
+      createFireworks();
+      createConfetti();
+    } catch (e) {
+      console.error('인출 신호 전송 실패', e);
+      showWithdrawStatus('인출 신호 실패', true);
     }
-
     isWithdrawFlow = false;
+  }
 });
 
-// 모달이 열릴 때 감지 자동 시작 (선택적)
+/* MutationObserver: cardModal이 열리면 카드 감지 시작 (보조) */
 const observer = new MutationObserver(() => {
     const display = window.getComputedStyle(cardModal).display;
     if (display !== 'none') {
-        // 모달이 보이면 감지 시작
-        startCardDetection();
+        // cardModal이 보이면 감지 시작(이미 startCardDetection 호출한 경우 중복 실행 가능, 안전하게 처리)
+        // startCardDetection();
     }
 });
 observer.observe(cardModal, { attributes: true });
 
-// 상태 표시
+/* 상태 표시 */
 function showWithdrawStatus(msg, isError=false, duration=2000){
-    const statusDiv = document.getElementById("withdrawStatus");
-    statusDiv.textContent = msg;
-    statusDiv.style.background = isError ? "rgba(255,64,129,0.95)" : "rgba(0,120,255,0.95)";
-    statusDiv.style.color = "#fff";
-    statusDiv.style.padding = "10px 16px";
-    statusDiv.style.borderRadius = "8px";
-    statusDiv.style.position = "fixed";
-    statusDiv.style.left = "50%";
-    statusDiv.style.transform = "translateX(-50%)";
-    statusDiv.style.bottom = "90px";
-    statusDiv.style.display="block";
-    setTimeout(()=>{ statusDiv.style.display="none"; }, duration);
+    withdrawStatusDiv.textContent = msg;
+    withdrawStatusDiv.style.background = isError ? "rgba(255,64,129,0.95)" : "rgba(0,120,255,0.95)";
+    withdrawStatusDiv.style.display = "block";
+    setTimeout(()=>{ withdrawStatusDiv.style.display = "none"; }, duration);
 }
 
-// 폭죽/콘페티
+/* 폭죽/콘페티 */
 function createFireworks(){
     for(let i=0;i<200;i++){
         const dot=document.createElement('div');
@@ -550,18 +610,39 @@ function createConfetti(){
         c.style.background=`hsl(${Math.random()*360},70%,60%)`;
         c.style.animationDuration=(2+Math.random()*3)+'s';
         document.body.appendChild(c);
-        // confetti 정리: 오래된 것 자동 제거(선택)
         setTimeout(()=>c.remove(), 7000);
     }
 }
 
-// 스크롤에 따라 withdrawBtn 위치 보정
+/* withdraw button scroll behavior */
 window.addEventListener('scroll', ()=>{
     const scrollTop = window.scrollY,
           scrollHeight = document.body.scrollHeight - window.innerHeight;
     withdrawBtn.style.bottom = (scrollTop >= scrollHeight - 50) ? '20px' : '-80px';
 });
 
+/* 전체화면 버튼: BLE 연결 시도 + 전체화면 */
+fullscreenBtn.addEventListener('click', async () => {
+    fullscreenBtn.style.display = 'none';
+    try {
+        await connectBLE();
+        alert('BLE 연결 성공!');
+    } catch (e) {
+        console.error('BLE 연결 실패:', e);
+        alert('BLE 연결 실패: ' + (e && e.message ? e.message : e));
+        fullscreenBtn.style.display = '';
+    }
+    // 전체화면
+    const elem = document.documentElement;
+    try {
+      if (elem.requestFullscreen) await elem.requestFullscreen();
+      else if (elem.webkitRequestFullscreen) await elem.webkitRequestFullscreen();
+      else if (elem.msRequestFullscreen) await elem.msRequestFullscreen();
+    } catch(e){}
+});
+
+/* 디버그 유틸: 콘솔에 버퍼 상태 보기 가능 */
+window.debugShowBuffer = function(){ console.log('notificationBuffer:', JSON.stringify(notificationBuffer), 'pendingResolvers:', pendingResolvers.length); };
 </script>
 </body>
 </html>
