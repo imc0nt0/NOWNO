@@ -122,20 +122,7 @@ tbody tr:hover{background:#ffe0f5;}
 }
 
 /* ----------------- 콘페티 ----------------- */
-.confetti {
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    pointer-events: none;
-    border-radius: 2px;
-    opacity: 0.9;
-    animation-name: confettiAnim, confettiRotate;
-    animation-timing-function: linear;
-    animation-fill-mode: forwards;
-}
-
-/* 아래 두 가지 애니메이션을 동시에 적용 */
-@keyframes confettiAnim {
+@keyframes confettiFall {
     0% {
         transform: translateY(0) rotate(0deg);
         opacity: 1;
@@ -146,9 +133,9 @@ tbody tr:hover{background:#ffe0f5;}
     }
 }
 
-@keyframes confettiRotate {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(720deg); }
+/* 공통 스타일 (선택 사항) */
+.confetti {
+    border-radius: 2px;
 }
 
 
@@ -573,7 +560,6 @@ function readOnce(timeoutMs = 5000) {
     });
 }
 
-/* startCardDetection: 카드 감지 성공할 때까지 반복 */
 async function startCardDetection(timeoutPerAttempt = 5000, retryDelay = 500) {
     try {
         if (!bleDevice || !bleDevice.gatt || !bleDevice.gatt.connected) {
@@ -588,6 +574,11 @@ async function startCardDetection(timeoutPerAttempt = 5000, retryDelay = 500) {
     let attempt = 0;
     while (true) {
         attempt++;
+
+        // 시도 전에 버퍼와 pendingResolvers 초기화
+        notificationBuffer = '';
+        pendingResolvers = [];
+
         showWithdrawStatus(`카드 감지 시도 ${attempt}회차`, false);
         console.log(`카드 감지 시도 ${attempt}회차`);
         const detected = await readOnce(timeoutPerAttempt);
@@ -604,6 +595,7 @@ async function startCardDetection(timeoutPerAttempt = 5000, retryDelay = 500) {
         }
     }
 }
+
 
 /* imageModal 확인 -> 조회 흐름 */
 document.getElementById('redirectBtn').addEventListener('click', async () => {
